@@ -1,5 +1,7 @@
 import type { SnowflakeParams } from '../seed/params';
-import type { SectorTemplate } from '../fractal/sector';
+import type { Flat } from '../fractal/geometry';
+import { kochSegment } from '../fractal/koch';
+import type { KochPath, SectorTemplate } from '../fractal/sector';
 import { SIERPINSKI_SCALE } from '../fractal/sierpinski';
 
 /**
@@ -41,8 +43,7 @@ export function planZoom(
     const rho = 0.4 * params.hexRadius;
     return { x: 0, y: 0, scale: SIERPINSKI_SCALE, rho, z0: viewRadius / rho, kind: 'sierpinski' };
   }
-  // The last Koch sub-segment into the tip has length (1 − m)/2 of the tip segment.
-  const rho = 0.45 * ((1 - tpl.koch.ratio) / 2) * tpl.tipSegmentLength;
+  const rho = kochTipRadius(tpl);
   return {
     x: tpl.tip.x,
     y: tpl.tip.y,
@@ -51,6 +52,71 @@ export function planZoom(
     z0: viewRadius / rho,
     kind: 'koch',
   };
+}
+
+/** Depth used to approximate the limit curve when measuring clearances. */
+const PROBE_DEPTH = 6;
+
+/**
+ * Radius around the main-branch tip T inside which the snowflake is exactly
+ * self-similar.
+ *
+ * Near T only the last Koch child of the tip segment (and its mirror image)
+ * may appear: that child *is* the whole curve scaled by 1/s. So ρ is the
+ * clearance between T and everything else — the tip segment's other three
+ * children (measured on the curve itself; spiky templates can fold back
+ * towards T) and every other segment of the sector (measured on its
+ * bounding disk).
+ */
+export function kochTipRadius(tpl: SectorTemplate): number {
+  const { koch, tip } = tpl;
+  const pts = tpl.mainHalf.points;
+  const n = pts.length / 2;
+  const cx = pts[2 * (n - 2)]!;
+  const cy = pts[2 * (n - 2) + 1]!;
+  const dx = tip.x - cx;
+  const dy = tip.y - cy;
+
+  // Tip segment C→T: its first three children, with bumps on the left (+1).
+  const t1 = (1 - koch.ratio) / 2;
+  const t3 = (1 + koch.ratio) / 2;
+  const h = koch.height;
+  const q1x = cx + dx * t1;
+  const q1y = cy + dy * t1;
+  const px = cx + dx / 2 - dy * h;
+  const py = cy + dy / 2 + dx * h;
+  const q3x = cx + dx * t3;
+  const q3y = cy + dy * t3;
+  const others: Flat = [cx, cy];
+  kochSegment(others, cx, cy, q1x, q1y, PROBE_DEPTH, 1, koch);
+  kochSegment(others, q1x, q1y, px, py, PROBE_DEPTH, 1, koch);
+  kochSegment(others, px, py, q3x, q3y, PROBE_DEPTH, 1, koch);
+  let clearance = Infinity;
+  for (let i = 0; i < others.length; i += 2) {
+    clearance = Math.min(clearance, Math.hypot(others[i]! - tip.x, others[i + 1]! - tip.y));
+  }
+
+  // Everything else in the sector, via conservative disks. Mirror images of
+  // these are equally far, since T lies on the mirror axis.
+  const segmentClearance = (path: KochPath, skipLast: boolean) => {
+    const p = path.points;
+    const count = p.length / 2 - 1 - (skipLast ? 1 : 0);
+    for (let i = 0; i < count; i++) {
+      const ax = p[2 * i]!;
+      const ay = p[2 * i + 1]!;
+      const bx = p[2 * i + 2]!;
+      const by = p[2 * i + 3]!;
+      const len = Math.hypot(bx - ax, by - ay);
+      const r = path.koch[i] ? koch.bound * len : len / 2;
+      const d = Math.hypot((ax + bx) / 2 - tip.x, (ay + by) / 2 - tip.y) - r;
+      clearance = Math.min(clearance, d);
+    }
+  };
+  segmentClearance(tpl.mainHalf, true);
+  for (const side of tpl.sides) segmentClearance(side, false);
+
+  // Margin for the depth-6 approximation of the limit curve; never collapse to zero.
+  return Math.max(1e-3 * tpl.tipSegmentLength, 0.85 * clearance);
 }
 
 /** Renormalised zoom after `u` self-similarity periods: z₀·s^frac(u). */

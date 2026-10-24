@@ -16,6 +16,7 @@ import {
   transitionLayers,
 } from '../src/animation/transition';
 import { buildSectorTemplate } from '../src/fractal/sector';
+import { buildSnowflake } from '../src/fractal/snowflake';
 import { seedToParams } from '../src/seed/seedToParams';
 
 const OPTS = { viewRadius: 1.4, maxBaseDepth: 6 };
@@ -205,5 +206,57 @@ describe('performance governor', () => {
     expect(gov.quality.glow).toBe(false);
     for (let i = 0; i < 2000; i++) gov.record(1);
     expect(gov.quality).toEqual(start);
+  });
+});
+
+describe('renormalisation seam on real geometry', () => {
+  // The frame at (zoom z₀·s, depth d + 1) must equal the frame at (z₀, d)
+  // inside the screen circle, compared in screen coordinates.
+  const screenPoints = (
+    seed: number,
+    zoom: number,
+    depths: { koch: number; sierpinski: number },
+    plan: ReturnType<typeof planZoom>,
+  ) => {
+    const params = seedToParams(seed);
+    const r = 1.4 / zoom;
+    const shapes = buildSnowflake(params, depths, { x: plan.x, y: plan.y, r, lod: 0.004 / zoom });
+    const pts: [number, number][] = [];
+    for (const poly of [...shapes.fills, ...shapes.holes]) {
+      for (let i = 0; i < poly.length; i += 2) {
+        const x = (poly[i]! - plan.x) * zoom;
+        const y = (poly[i + 1]! - plan.y) * zoom;
+        if (Math.hypot(x, y) < 1.4 * 0.9) pts.push([x, y]);
+      }
+    }
+    return pts;
+  };
+
+  const check = (seed: number) => {
+    const params = seedToParams(seed);
+    const tpl = buildSectorTemplate(params);
+    const plan = planZoom(params, tpl, 1.4);
+    const at = (z: number) => ({
+      koch: depthForZoom(2, z, tpl.koch.scale),
+      sierpinski: depthForZoom(2, z, 2),
+    });
+    const a = screenPoints(seed, plan.z0, at(plan.z0), plan);
+    const b = screenPoints(seed, plan.z0 * plan.scale, at(plan.z0 * plan.scale), plan);
+    const key = ([x, y]: [number, number]) => `${x.toFixed(5)},${y.toFixed(5)}`;
+    const setA = new Set(a.map(key));
+    const setB = new Set(b.map(key));
+    // Both directions: anything extra on either side would be a visible seam.
+    const onlyA = a.filter((p) => !setB.has(key(p)));
+    const onlyB = b.filter((p) => !setA.has(key(p)));
+    expect(a.length).toBeGreaterThan(10);
+    expect(onlyA.length / a.length, `seed ${seed}`).toBeLessThan(0.01);
+    expect(onlyB.length / b.length, `seed ${seed}`).toBeLessThan(0.01);
+    return plan.kind;
+  };
+
+  it('holds for Koch tips and Sierpiński centres across seeds', () => {
+    const kinds = new Set<string>();
+    for (let seed = 0; seed < 24; seed++) kinds.add(check(seed));
+    expect(kinds).toEqual(new Set(['koch', 'sierpinski']));
   });
 });
