@@ -207,6 +207,20 @@ describe('performance governor', () => {
     for (let i = 0; i < 2000; i++) gov.record(1);
     expect(gov.quality).toEqual(start);
   });
+
+  it('treats a slow frame interval as overload even when CPU time is low (GPU-bound)', () => {
+    const gov = new PerformanceGovernor();
+    const start = gov.quality.minSegmentPx;
+    for (let i = 0; i < 100; i++) gov.record(2, 33);
+    expect(gov.quality.minSegmentPx).toBeGreaterThan(start);
+  });
+
+  it('holds steady inside the hysteresis band', () => {
+    const gov = new PerformanceGovernor();
+    const start = { ...gov.quality };
+    for (let i = 0; i < 400; i++) gov.record(8, 16.7);
+    expect(gov.quality).toEqual(start);
+  });
 });
 
 describe('renormalisation seam on real geometry', () => {
