@@ -2,10 +2,15 @@
 
 **黄金角シードによるフラクタル雪の結晶ジェネレーター**
 
+[![Live demo](https://img.shields.io/badge/demo-live-7aa2ff)](https://york-14.github.io/Design-portfolio-3/)
+[![CI](https://github.com/York-14/Design-portfolio-3/actions/workflows/ci.yml/badge.svg)](https://github.com/York-14/Design-portfolio-3/actions/workflows/ci.yml)
+
+▶ **デモ：<https://york-14.github.io/Design-portfolio-3/>**
+
 整数シード `n` から雪の結晶を決定的に生成し、
 「生成 → フラクタル拡大 → 縮小 → 次のシード」を無限に繰り返すアニメーション作品です。
 
-![seed #0012 と UI](docs/hero.png)
+[![seed #0012 と UI](docs/hero.png)](https://york-14.github.io/Design-portfolio-3/?seed=12)
 
 ## コンセプト
 
@@ -23,7 +28,9 @@
 「でたらめに見えるが、実は最も偏りなく空間を埋める」黄金比の列が、シード探索を担います。
 `Math.random` は ESLint で禁止しています。
 
-![seed #0000〜#0023](docs/gallery.png)
+[![seed #0000〜#0023](docs/gallery.png)](https://york-14.github.io/Design-portfolio-3/)
+
+画像をクリックするとデモが開きます。気になる結晶は `?seed=番号` で直接開けます（例：[#0007](https://york-14.github.io/Design-portfolio-3/?seed=7)、[#0012](https://york-14.github.io/Design-portfolio-3/?seed=12)、[#0021](https://york-14.github.io/Design-portfolio-3/?seed=21)）。
 
 ## シード生成プロトコル
 
@@ -167,6 +174,11 @@ rAF 間隔も見ているのは、Canvas2D のラスタライズが GPU 側で�
 
 ## 実行方法
 
+ブラウザで見るだけなら、デモ <https://york-14.github.io/Design-portfolio-3/> を開いてください。
+`main` への push ごとに GitHub Actions（`.github/workflows/pages.yml`）が GitHub Pages へ自動デプロイします。
+
+ローカルで動かす場合：
+
 ```bash
 npm install
 npm run dev        # http://localhost:5173
@@ -202,9 +214,9 @@ npm run preview
 
 ## 無限ズームのスナップショット
 
-| コッホ先端（×2/(1−m)）           | シェルピンスキー中心（×2）                   |
-| -------------------------------- | -------------------------------------------- |
-| ![Koch zoom](docs/zoom-koch.png) | ![Sierpinski zoom](docs/zoom-sierpinski.png) |
+| コッホ先端（×2/(1−m)）                                                                          | シェルピンスキー中心（×2）                                                                                   |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| [![Koch zoom](docs/zoom-koch.png)](https://york-14.github.io/Design-portfolio-3/?seed=7&at=9.5) | [![Sierpinski zoom](docs/zoom-sierpinski.png)](https://york-14.github.io/Design-portfolio-3/?seed=21&at=9.5) |
 
 ## 構成
 
