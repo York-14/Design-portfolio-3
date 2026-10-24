@@ -14,10 +14,18 @@ describe('URL query', () => {
   });
 
   it('reads optional flags with safe fallbacks', () => {
-    const q = parseQuery('?seed=7&at=12.5&paused=1&transition=crossfade&hud=0');
-    expect(q).toEqual({ seed: 7, at: 12.5, paused: true, transition: 'crossfade', hud: false });
-    const d = parseQuery('?transition=nope&at=-4');
+    const q = parseQuery('?seed=7&at=12.5&paused=1&cycle=zoom&transition=crossfade&hud=0');
+    expect(q).toEqual({
+      seed: 7,
+      at: 12.5,
+      paused: true,
+      cycle: 'zoom',
+      transition: 'crossfade',
+      hud: false,
+    });
+    const d = parseQuery('?transition=nope&at=-4&cycle=spin');
     expect(d.transition).toBe('hybrid');
+    expect(d.cycle).toBe('chaos');
     expect(d.at).toBe(0);
     expect(d.hud).toBe(true);
   });

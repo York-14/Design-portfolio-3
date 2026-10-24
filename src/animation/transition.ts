@@ -10,6 +10,8 @@ export interface Layer {
   /** Crystal growth in [0, 1]; see fractal/growth.ts. */
   growth: number;
   alpha: number;
+  /** Extra blur in CSS pixels (used while dissolving). */
+  blur?: number;
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;

@@ -1,6 +1,7 @@
 import type { FrameState } from '../animation/timeline';
 import type { Quality } from '../animation/perf';
 import type { Phase } from '../animation/config';
+import { kochFlank } from '../animation/chaos';
 
 export interface ControlHandlers {
   prev(): void;
@@ -11,6 +12,8 @@ export interface ControlHandlers {
 
 const PHASE_LABELS: Record<Phase, string> = {
   generate: 'Grow · 成長',
+  chaos: 'Chaos · 混沌',
+  dissolve: 'Dissolve · 消滅',
   zoomIn: 'Zoom in · 拡大',
   infinite: 'Infinite zoom · 無限拡大',
   zoomOut: 'Zoom out · 縮小',
@@ -111,7 +114,9 @@ export class Hud {
         `Sierpiński  ${p.sierpinskiPattern} · d${p.sierpinskiDepth}`,
         `Sides  ${p.sideCount} @ ${p.sideAngle.toFixed(0)}°`,
         `HSL  ${p.hue.toFixed(0)}° ${p.saturation.toFixed(0)}% ${p.lightness.toFixed(0)}%`,
-        `Zoom  ${frame.plan.kind === 'koch' ? 'Koch tip' : 'gasket centre'} ×${frame.plan.scale.toFixed(2)}`,
+        frame.cycle === 'zoom'
+          ? `Zoom  ${frame.plan.kind === 'koch' ? 'Koch tip' : 'gasket centre'} ×${frame.plan.scale.toFixed(2)}`
+          : `Flank  ${kochFlank(p.kochRatio, p.kochAngle).toFixed(2)} of segment`,
       ].join('\n');
       if (text !== this.lastParamText) {
         this.lastParamText = text;

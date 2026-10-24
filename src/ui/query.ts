@@ -1,4 +1,4 @@
-import { TRANSITION_MODES, type TransitionMode } from '../animation/config';
+import { CYCLES, TRANSITION_MODES, type Cycle, type TransitionMode } from '../animation/config';
 
 export interface QueryOptions {
   seed: number;
@@ -6,6 +6,7 @@ export interface QueryOptions {
   at: number;
   paused: boolean;
   transition: TransitionMode;
+  cycle: Cycle;
   hud: boolean;
 }
 
@@ -17,11 +18,15 @@ function parseSeed(raw: string | null): number {
   return Number.isSafeInteger(n) && n <= MAX_SEED ? n : 0;
 }
 
-/** Parse `?seed=n&at=s&paused=1&transition=hybrid&hud=0`; invalid values fall back to defaults. */
+/**
+ * Parse `?seed=n&at=s&paused=1&cycle=chaos&transition=hybrid&hud=0`;
+ * invalid values fall back to defaults.
+ */
 export function parseQuery(search: string): QueryOptions {
   const q = new URLSearchParams(search);
   const at = Number(q.get('at'));
   const transition = q.get('transition');
+  const cycle = q.get('cycle');
   const flag = (name: string, fallback: boolean) => {
     const v = q.get(name);
     if (v === null) return fallback;
@@ -34,6 +39,7 @@ export function parseQuery(search: string): QueryOptions {
     transition: (TRANSITION_MODES as readonly string[]).includes(transition ?? '')
       ? (transition as TransitionMode)
       : 'hybrid',
+    cycle: (CYCLES as readonly string[]).includes(cycle ?? '') ? (cycle as Cycle) : 'chaos',
     hud: flag('hud', true),
   };
 }

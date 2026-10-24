@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSnowflake } from '../src/fractal/snowflake';
+import { buildSnowflake, depthForBudget } from '../src/fractal/snowflake';
 import { buildSectorTemplate } from '../src/fractal/sector';
 import { D6, REFLECTIONS, ROTATIONS } from '../src/fractal/symmetry';
 import { applyX, applyY, compose, signedArea, type Flat } from '../src/fractal/geometry';
@@ -129,6 +129,14 @@ describe('symmetrised snowflake', () => {
     const params = seedToParams(9);
     const shapes = buildSnowflake(params, { koch: 2, sierpinski: 1 });
     for (const poly of shapes.fills) expect(signedArea(poly)).toBeGreaterThan(0);
+  });
+
+  it('the segment budget caps Koch depth when the whole flake is visible', () => {
+    const params = seedToParams(4);
+    const deep = buildSnowflake(params, { koch: 9, sierpinski: 1 }, { maxSegments: 20_000 });
+    const points = deep.fills.reduce((n, f) => n + f.length / 2, 0);
+    expect(points).toBeLessThan(20_000 * 1.2);
+    expect(depthForBudget(100, 100 * 4 ** 3)).toBeCloseTo(3, 12);
   });
 
   it('rotations and reflections are listed in matching order', () => {
