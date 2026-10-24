@@ -32,8 +32,10 @@ export interface SectorTemplate {
   tip: { x: number; y: number };
   /** Length of the single Koch segment that ends at the tip. */
   tipSegmentLength: number;
-  /** Upper bound of |p| over the finished snowflake. */
+  /** Upper bound of |p| over the snowflake at this growth. */
   radius: number;
+  /** Arm growth the template was built for: 0 = bare hexagon, 1 = full size. */
+  arms: number;
 }
 
 /** Split segment A→B into equal pieces of roughly `grain` length (at least one). */
@@ -51,7 +53,15 @@ function startPath(x: number, y: number): KochPath {
   return { points: [x, y], koch: [] };
 }
 
-export function buildSectorTemplate(p: SnowflakeParams): SectorTemplate {
+/**
+ * Build the fundamental sector.
+ *
+ * @param arms Arm growth in [0, 1]. Everything outside the central hexagon
+ *   (branches, side branches, branch gaskets) is scaled by `arms` about the
+ *   main branch's root on the hexagon edge, so arms sprout from a point and
+ *   grow out as a whole — keeping their proportions and Koch detail.
+ */
+export function buildSectorTemplate(p: SnowflakeParams, arms = 1): SectorTemplate {
   const koch = kochTemplate(p.kochRatio, p.kochAngle);
   const w = p.mainWidth;
   const c = p.hexRadius;
@@ -126,6 +136,20 @@ export function buildSectorTemplate(p: SnowflakeParams): SectorTemplate {
   const tipSegmentLength = Math.hypot(L - shoulderX, shoulderY);
   const radius = L + koch.bound * tipSegmentLength + 0.05;
 
+  // Grow the arms out of the hexagon edge: (x, y) ↦ (r0 + s(x − r0), s·y).
+  const s = Math.min(1, Math.max(0, arms));
+  const grow = (pts: number[]) => {
+    for (let i = 0; i < pts.length; i += 2) {
+      pts[i] = r0 + s * (pts[i]! - r0);
+      pts[i + 1] = s * pts[i + 1]!;
+    }
+  };
+  if (s < 1) {
+    grow(mainHalf.points);
+    for (const side of sides) grow(side.points);
+    for (const tri of branchGaskets) grow(tri);
+  }
+
   return {
     mainHalf,
     hexHalf,
@@ -133,8 +157,9 @@ export function buildSectorTemplate(p: SnowflakeParams): SectorTemplate {
     hexGasket,
     branchGaskets,
     koch,
-    tip: { x: L, y: 0 },
-    tipSegmentLength,
-    radius,
+    tip: { x: r0 + s * (L - r0), y: 0 },
+    tipSegmentLength: s * tipSegmentLength,
+    radius: Math.max(c + koch.bound * grain, r0 + s * (radius - r0)),
+    arms: s,
   };
 }

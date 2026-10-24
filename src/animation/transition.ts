@@ -1,11 +1,14 @@
 import type { SnowflakeParams } from '../seed/params';
 import { RD_PARAM_KEYS, RD_PARAM_SPECS } from '../seed/params';
+import { armProgress } from '../fractal/growth';
 import type { Depths } from '../fractal/snowflake';
 import type { TransitionMode } from './config';
 
 export interface Layer {
   params: SnowflakeParams;
   depths: Depths;
+  /** Crystal growth in [0, 1]; see fractal/growth.ts. */
+  growth: number;
   alpha: number;
 }
 
@@ -34,8 +37,15 @@ export function lerpParams(a: SnowflakeParams, b: SnowflakeParams, t: number): S
   return out;
 }
 
-/** Do a and b differ in a discrete parameter that changes geometry at these depths? */
-export function discreteDiffers(a: SnowflakeParams, b: SnowflakeParams, depths: Depths): boolean {
+/** Do a and b differ in a discrete parameter that changes geometry at this depth and growth? */
+export function discreteDiffers(
+  a: SnowflakeParams,
+  b: SnowflakeParams,
+  depths: Depths,
+  growth = 1,
+): boolean {
+  // Before the arms sprout, every crystal is a dot or a hexagon.
+  if (armProgress(growth) <= 0) return false;
   if (a.sideCount !== b.sideCount) return true;
   if (depths.sierpinski > 0 && a.sierpinskiPattern !== b.sierpinskiPattern) return true;
   return false;
@@ -56,22 +66,25 @@ export function transitionLayers(
   mode: TransitionMode,
   depths: Depths,
   alpha = 1,
+  growth = 1,
 ): Layer[] {
   switch (mode) {
     case 'crossfade':
       return [
-        { params: a, depths, alpha: alpha * (1 - t) },
-        { params: b, depths, alpha: alpha * t },
+        { params: a, depths, growth, alpha: alpha * (1 - t) },
+        { params: b, depths, growth, alpha: alpha * t },
       ];
-    case 'morph':
-      return [{ params: t < 0.5 ? lerpParams(a, b, t) : lerpParams(b, a, 1 - t), depths, alpha }];
+    case 'morph': {
+      const params = t < 0.5 ? lerpParams(a, b, t) : lerpParams(b, a, 1 - t);
+      return [{ params, depths, growth, alpha }];
+    }
     case 'hybrid':
-      if (!discreteDiffers(a, b, depths)) {
-        return [{ params: lerpParams(a, b, t), depths, alpha }];
+      if (!discreteDiffers(a, b, depths, growth)) {
+        return [{ params: lerpParams(a, b, t), depths, growth, alpha }];
       }
       return [
-        { params: lerpParams(a, b, t), depths, alpha: alpha * (1 - t) },
-        { params: lerpParams(b, a, 1 - t), depths, alpha: alpha * t },
+        { params: lerpParams(a, b, t), depths, growth, alpha: alpha * (1 - t) },
+        { params: lerpParams(b, a, 1 - t), depths, growth, alpha: alpha * t },
       ];
   }
 }

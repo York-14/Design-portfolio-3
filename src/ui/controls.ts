@@ -10,11 +10,11 @@ export interface ControlHandlers {
 }
 
 const PHASE_LABELS: Record<Phase, string> = {
-  generate: 'Generate · 生成',
+  generate: 'Grow · 成長',
   zoomIn: 'Zoom in · 拡大',
   infinite: 'Infinite zoom · 無限拡大',
   zoomOut: 'Zoom out · 縮小',
-  fadeOut: 'Fade out · 退色',
+  fadeOut: 'Melt · 収縮',
   transition: 'Next seed · 次へ',
 };
 

@@ -234,7 +234,9 @@ describe('renormalisation seam on real geometry', () => {
   ) => {
     const params = seedToParams(seed);
     const r = 1.4 / zoom;
-    const shapes = buildSnowflake(params, depths, { x: plan.x, y: plan.y, r, lod: 0.004 / zoom });
+    const shapes = buildSnowflake(params, depths, {
+      view: { x: plan.x, y: plan.y, r, lod: 0.004 / zoom },
+    });
     const pts: [number, number][] = [];
     for (const poly of [...shapes.fills, ...shapes.holes]) {
       for (let i = 0; i < poly.length; i += 2) {

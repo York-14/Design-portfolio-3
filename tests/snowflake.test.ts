@@ -89,7 +89,7 @@ describe('symmetrised snowflake', () => {
     for (const seed of seeds) {
       const params = seedToParams(seed);
       const tpl = buildSectorTemplate(params);
-      const shapes = buildSnowflake(params, { koch: 4, sierpinski: 2 }, undefined, tpl);
+      const shapes = buildSnowflake(params, { koch: 4, sierpinski: 2 }, { template: tpl });
       let max = 0;
       for (const poly of shapes.fills) {
         for (let i = 0; i < poly.length; i += 2)
@@ -104,8 +104,8 @@ describe('symmetrised snowflake', () => {
     const depths = { koch: 4, sierpinski: 3 };
     const tpl = buildSectorTemplate(params);
     const view = { x: tpl.tip.x * 0.5, y: 0.1, r: 0.15, lod: 0 };
-    const full = buildSnowflake(params, depths, undefined, tpl);
-    const culled = buildSnowflake(params, depths, view, tpl);
+    const full = buildSnowflake(params, depths, { template: tpl });
+    const culled = buildSnowflake(params, depths, { view, template: tpl });
     const culledSet = new PointSet(culled.fills);
     for (const poly of full.fills) {
       for (let i = 0; i < poly.length; i += 2) {

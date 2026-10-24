@@ -104,7 +104,7 @@ function render(intervalMs = 0): void {
       koch: Math.min(DEPTH_CEILING, l.depths.koch),
       sierpinski: Math.min(DEPTH_CEILING, l.depths.sierpinski),
     };
-    const shapes = buildSnowflake(l.params, depths, view);
+    const shapes = buildSnowflake(l.params, depths, { view, growth: l.growth });
     layerCtx!.clearRect(0, 0, w, h);
     drawSnowflake(
       layerCtx!,

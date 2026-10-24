@@ -10,7 +10,7 @@ export interface PhaseSpec {
 }
 
 export interface AnimationConfig {
-  /** Recursion levels 0 → max are drawn in. */
+  /** A dot swells into a hexagon, arms sprout and recursion deepens 0 → max. */
   generate: PhaseSpec;
   /** Overview → self-similar fixed point. */
   zoomIn: PhaseSpec;
@@ -18,19 +18,19 @@ export interface AnimationConfig {
   infinite: PhaseSpec & { cycles: number };
   /** Back out to the overview. */
   zoomOut: PhaseSpec;
-  /** Recursion recedes to level 0 and the crystal dims to `floor` opacity. */
+  /** Growth in reverse — back to a dot — while dimming to `floor` opacity. */
   fadeOut: PhaseSpec & { floor: number };
-  /** Crystal n becomes crystal n + 1. */
+  /** Crystal n becomes crystal n + 1 (at the dot stage). */
   transition: PhaseSpec & { mode: TransitionMode };
 }
 
 export const DEFAULT_CONFIG: AnimationConfig = {
-  generate: { duration: 5, easing: 'easeInOutSine' },
+  generate: { duration: 6, easing: 'easeInOutSine' },
   zoomIn: { duration: 4.5, easing: 'easeInOutCubic' },
   infinite: { duration: 3.2, easing: 'linear', cycles: 3 },
   zoomOut: { duration: 4, easing: 'easeInOutCubic' },
-  fadeOut: { duration: 1.8, easing: 'easeInOutQuad', floor: 0.4 },
-  transition: { duration: 2.6, easing: 'easeInOutSine', mode: 'hybrid' },
+  fadeOut: { duration: 2.6, easing: 'easeInOutSine', floor: 0.4 },
+  transition: { duration: 1.6, easing: 'easeInOutSine', mode: 'hybrid' },
 };
 
 export const PHASES = [

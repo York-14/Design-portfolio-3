@@ -1,5 +1,6 @@
 import type { SnowflakeParams } from '../seed/params';
 import { seedToParams } from '../seed/seedToParams';
+import { armProgress } from '../fractal/growth';
 import { buildSectorTemplate, type SectorTemplate } from '../fractal/sector';
 import { SIERPINSKI_SCALE } from '../fractal/sierpinski';
 import type { Depths } from '../fractal/snowflake';
@@ -105,13 +106,21 @@ export class Timeline {
     });
     const floor = cfg.fadeOut.floor;
     const overview: CameraState = { cx: 0, cy: 0, zoom: 1 };
-    const single = (depths: Depths, alpha: number): Layer[] => [{ params, depths, alpha }];
+    const single = (depths: Depths, alpha: number, growth = 1): Layer[] => [
+      { params, depths, growth, alpha },
+    ];
+    // While growing, recursion deepens together with the arms, so corners
+    // multiply as the crystal spreads (see fractal/growth.ts).
+    const grown = (growth: number): Depths => {
+      const s = armProgress(growth);
+      return { koch: dk * s, sierpinski: ds * s };
+    };
 
     let layers: Layer[];
     let camera = overview;
     switch (phase) {
       case 'generate':
-        layers = single({ koch: dk * e, sierpinski: ds * e }, floor + (1 - floor) * e);
+        layers = single(grown(e), floor + (1 - floor) * e, e);
         break;
       case 'zoomIn':
       case 'zoomOut':
@@ -125,7 +134,8 @@ export class Timeline {
         break;
       }
       case 'fadeOut':
-        layers = single({ koch: dk * (1 - e), sierpinski: ds * (1 - e) }, 1 - (1 - floor) * e);
+        // Growth in reverse: the crystal melts back into a dot.
+        layers = single(grown(1 - e), 1 - (1 - floor) * e, 1 - e);
         break;
       case 'transition': {
         const next = this.entry(this.seed + 1).params;
@@ -136,6 +146,7 @@ export class Timeline {
           cfg.transition.mode,
           { koch: 0, sierpinski: 0 },
           floor,
+          0,
         );
         break;
       }

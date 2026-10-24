@@ -10,6 +10,7 @@ import {
   type Mat2,
   type ViewCircle,
 } from './geometry';
+import { NUCLEUS_END, armProgress, nucleusPolygon, nucleusProgress } from './growth';
 import { kochPolyline } from './koch';
 import { buildSectorTemplate, type KochPath, type SectorTemplate, type Triangle } from './sector';
 import { gasketHoles } from './sierpinski';
@@ -27,6 +28,15 @@ export interface Depths {
   sierpinski: number;
 }
 
+export interface BuildOptions {
+  /** Refine only what is visible inside this circle (see {@link ViewCircle}). */
+  view?: ViewCircle;
+  /** Crystal growth in [0, 1] (see growth.ts); 1 = fully grown. */
+  growth?: number;
+  /** Precomputed sector template; must match `params` and `growth`. */
+  template?: SectorTemplate;
+}
+
 /**
  * Generate the whole snowflake from its 1/12 sector.
  *
@@ -38,10 +48,15 @@ export interface Depths {
 export function buildSnowflake(
   params: SnowflakeParams,
   depths: Depths,
-  view?: ViewCircle,
-  template: SectorTemplate = buildSectorTemplate(params),
+  { view, growth = 1, template }: BuildOptions = {},
 ): SnowflakeShapes {
-  const tpl = template;
+  // Nucleus stage: a dot swelling into the hexagon. Its outline is sampled
+  // every 2.5°, which is D6-invariant by construction.
+  if (growth < NUCLEUS_END) {
+    return { fills: [nucleusPolygon(params.hexRadius, nucleusProgress(growth))], holes: [] };
+  }
+  const tpl = template ?? buildSectorTemplate(params, armProgress(growth));
+  const hasArms = tpl.arms > 1e-6;
 
   // If the view circle swallows the whole snowflake, culling never fires and
   // one sector computation can be shared by all twelve copies.
@@ -61,7 +76,7 @@ export function buildSnowflake(
 
   // Main branches: half outline (bumps on the left, i.e. +y) + its mirror image.
   const mainKoch = kochOf(tpl.mainHalf, +1);
-  for (let k = 0; k < 6; k++) {
+  for (let k = 0; k < (hasArms ? 6 : 0); k++) {
     const rot = ROTATIONS[k]!;
     const ref = REFLECTIONS[k]!;
     const upper = mapFlat(rot, inSector(tpl.mainHalf, rot, mainKoch));
@@ -83,7 +98,7 @@ export function buildSnowflake(
   fills.unshift(dropClosingPoint(hex));
 
   // Side branches: closed polygons, twelve copies each.
-  for (const side of tpl.sides) {
+  for (const side of hasArms ? tpl.sides : []) {
     const outward = signedArea(side.points) > 0 ? -1 : +1;
     const sideKoch = kochOf(side, outward);
     for (const g of [...ROTATIONS, ...REFLECTIONS]) {
@@ -92,7 +107,10 @@ export function buildSnowflake(
   }
 
   // Sierpiński gaskets: axial triangles, six rotations each.
-  const gaskets: Triangle[] = [...(tpl.hexGasket ? [tpl.hexGasket] : []), ...tpl.branchGaskets];
+  const gaskets: Triangle[] = [
+    ...(tpl.hexGasket ? [tpl.hexGasket] : []),
+    ...(hasArms ? tpl.branchGaskets : []),
+  ];
   for (const tri of gaskets) {
     const make = (v?: ViewCircle) => {
       const out: Flat[] = [];
