@@ -2,6 +2,7 @@ import { rdAlphas, rdPoint, vogel } from './golden';
 import {
   HUE_RANGE,
   RD_PARAM_KEYS,
+  kochRatioCap,
   RD_PARAM_SPECS,
   SATURATION_RANGE,
   mapContinuous,
@@ -60,6 +61,13 @@ export function seedToParams(n: number): SnowflakeParams {
   RD_PARAM_KEYS.forEach((key, k) => {
     mapped[key] = mapSpec(u[k] as number, RD_PARAM_SPECS[key]);
   });
+
+  // The bump ratio's upper bound depends on the apex angle: map u onto the
+  // allowed interval rather than clamping, so its distribution stays even.
+  const ratio = RD_PARAM_SPECS.kochRatio;
+  const kRatio = RD_PARAM_KEYS.indexOf('kochRatio');
+  const maxRatio = Math.min(ratio.max, kochRatioCap(mapped.kochAngle as number));
+  mapped.kochRatio = ratio.min + (u[kRatio] as number) * (maxRatio - ratio.min);
 
   const { theta, r } = vogel(n, VOGEL_PERIOD);
 

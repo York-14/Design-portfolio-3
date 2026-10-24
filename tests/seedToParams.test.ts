@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   HUE_RANGE,
+  KOCH_MAX_FLANK,
   RD_PARAM_KEYS,
+  kochRatioCap,
   RD_PARAM_SPECS,
   SATURATION_RANGE,
   type ParamSpec,
@@ -47,6 +49,15 @@ describe('seedToParams', () => {
       expect(p.saturation).toBeGreaterThanOrEqual(SATURATION_RANGE.min);
       expect(p.saturation).toBeLessThan(SATURATION_RANGE.max);
       expect(p.seed).toBe(n);
+    }
+  });
+
+  it('caps the Koch ratio so bump flanks stay short', () => {
+    for (let n = 0; n < 2000; n++) {
+      const p = seedToParams(n);
+      expect(p.kochRatio).toBeLessThanOrEqual(kochRatioCap(p.kochAngle) + 1e-12);
+      const flank = p.kochRatio / 2 / Math.sin((p.kochAngle * Math.PI) / 360);
+      expect(flank).toBeLessThanOrEqual(KOCH_MAX_FLANK + 1e-12);
     }
   });
 
