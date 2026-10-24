@@ -4,7 +4,7 @@ import { applyX, applyY, type Flat } from '../src/fractal/geometry';
 import { buildSnowflake } from '../src/fractal/snowflake';
 import { D6 } from '../src/fractal/symmetry';
 import { Timeline } from '../src/animation/timeline';
-import { DEFAULT_CONFIG } from '../src/animation/config';
+import { DEFAULT_CONFIG, type AnimationConfig } from '../src/animation/config';
 import { seedToParams } from '../src/seed/seedToParams';
 
 /** Vertices where the outline turns by more than 20°. */
@@ -119,9 +119,9 @@ describe('growth in the timeline', () => {
     expect(f.layers[0]!.growth).toBeCloseTo(0, 12);
   });
 
-  it('melts back to a dot before the next seed, and the hand-over happens at the dot', () => {
-    const tl = new Timeline(17);
-    const c = DEFAULT_CONFIG;
+  it('zoom cycle: melts back to a dot before the next seed, and the hand-over happens at the dot', () => {
+    const c: AnimationConfig = { ...DEFAULT_CONFIG, cycle: 'zoom' };
+    const tl = new Timeline(17, c);
     tl.update(
       c.generate.duration +
         c.zoomIn.duration +

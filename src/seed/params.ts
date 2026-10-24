@@ -114,8 +114,8 @@ export const KOCH_MAX_FLANK = 0.36;
  * (m/2) / sin(θ/2) within {@link KOCH_MAX_FLANK}. Longer flanks make the
  * curve fold over itself into an unreadable tangle.
  */
-export function kochRatioCap(apexAngleDeg: number): number {
-  return 2 * KOCH_MAX_FLANK * Math.sin((apexAngleDeg * Math.PI) / 360);
+export function kochRatioCap(apexAngleDeg: number, maxFlank = KOCH_MAX_FLANK): number {
+  return 2 * maxFlank * Math.sin((apexAngleDeg * Math.PI) / 360);
 }
 
 /** Ranges of the Vogel-driven colour parameters. */

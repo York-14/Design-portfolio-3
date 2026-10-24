@@ -8,12 +8,14 @@ const PORT = 4179;
 const BASE = `http://localhost:${PORT}/`;
 const OUT = path.join(__dirname, '..', 'docs');
 
-// `at` = seconds into the timeline (6 s = fully grown, 10.5 s = start of the infinite zoom).
+// `at` = seconds into the timeline: 6 s = fully grown, 6–14 s = chaos, 14–16.4 s = dissolve.
+// The zoom shots use the optional zoom cycle (infinite zoom from 10.5 s).
 const GROWN = 5.99;
 const SHOTS = [
   ['hero.png', `seed=12&at=${GROWN}&paused=1`],
-  ['zoom-koch.png', 'seed=7&at=12.1&paused=1&hud=0'],
-  ['zoom-sierpinski.png', 'seed=21&at=12.1&paused=1&hud=0'],
+  ['chaos-peak.png', 'seed=4&at=13.2&paused=1&hud=0'],
+  ['zoom-koch.png', 'seed=7&at=12.1&cycle=zoom&paused=1&hud=0'],
+  ['zoom-sierpinski.png', 'seed=21&at=12.1&cycle=zoom&paused=1&hud=0'],
 ];
 const GALLERY = {
   file: 'gallery.png',
@@ -29,6 +31,15 @@ const GROWTH = {
   columns: 8,
   tiles: [0.3, 1.0, 1.6, 2.2, 2.8, 3.5, 4.4, GROWN].map((t) => ({
     q: `seed=12&at=${t}`,
+    label: `${t.toFixed(1)} s`,
+  })),
+};
+// Life of seed #0004 after growing: corners multiply into chaos, then it dissolves.
+const CHAOS = {
+  file: 'chaos.png',
+  columns: 8,
+  tiles: [GROWN, 8, 10, 11.5, 12.7, 13.6, 14.6, 15.4].map((t) => ({
+    q: `seed=4&at=${t}`,
     label: `${t.toFixed(1)} s`,
   })),
 };
@@ -91,7 +102,7 @@ async function main() {
       console.log(`saved docs/${file}`);
     }
 
-    for (const sheet of [GALLERY, GROWTH]) await contactSheet(browser, page, sheet);
+    for (const sheet of [GALLERY, GROWTH, CHAOS]) await contactSheet(browser, page, sheet);
   } finally {
     await browser.close();
     server.kill();

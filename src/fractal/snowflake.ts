@@ -35,6 +35,22 @@ export interface BuildOptions {
   growth?: number;
   /** Precomputed sector template; must match `params` and `growth`. */
   template?: SectorTemplate;
+  /**
+   * Upper bound on Koch segments when the whole snowflake is on screen.
+   * Spiky (chaotic) templates shrink slowly per level, so screen-space LOD
+   * alone cannot stop 4^depth from exploding; this caps the depth instead.
+   */
+  maxSegments?: number;
+}
+
+/**
+ * Deepest whole Koch level at which `edges` base segments refine into at most
+ * `maxSegments` segments. Whole, because even a barely raised partial level
+ * already has all of its 4× vertices.
+ */
+export function depthForBudget(edges: number, maxSegments: number): number {
+  if (edges <= 0) return Infinity;
+  return Math.max(0, Math.floor(Math.log(maxSegments / edges) / Math.log(4) + 1e-9));
 }
 
 /**
@@ -48,7 +64,7 @@ export interface BuildOptions {
 export function buildSnowflake(
   params: SnowflakeParams,
   depths: Depths,
-  { view, growth = 1, template }: BuildOptions = {},
+  { view, growth = 1, template, maxSegments }: BuildOptions = {},
 ): SnowflakeShapes {
   // Nucleus stage: a dot swelling into the hexagon. Its outline is sampled
   // every 2.5°, which is D6-invariant by construction.
@@ -68,8 +84,18 @@ export function buildSnowflake(
     return make(mapView(transposeInverse(g), view));
   };
 
+  // Every Koch base edge appears twelve times (six rotations × mirror).
+  let kochDepth = depths.koch;
+  if (maxSegments !== undefined && !culls) {
+    const flagged = (p: KochPath) => p.koch.filter(Boolean).length;
+    const perSector =
+      flagged(tpl.hexHalf) +
+      (hasArms ? flagged(tpl.mainHalf) + tpl.sides.reduce((n, s) => n + flagged(s), 0) : 0);
+    kochDepth = Math.min(kochDepth, depthForBudget(12 * perSector, maxSegments));
+  }
+
   const kochOf = (path: KochPath, side: number) => (v?: ViewCircle) =>
-    kochPolyline(path.points, path.koch, depths.koch, side, tpl.koch, v);
+    kochPolyline(path.points, path.koch, kochDepth, side, tpl.koch, v);
 
   const fills: Flat[] = [];
   const holes: Flat[] = [];

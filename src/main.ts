@@ -11,6 +11,8 @@ import './style.css';
 const WORLD_RADIUS = 1.12;
 /** Hard ceiling on recursion, independent of LOD, as a last line of defence. */
 const DEPTH_CEILING = 18;
+/** Koch segment budget at the finest LOD; it shrinks as the governor coarsens LOD. */
+const SEGMENT_BUDGET = 80_000;
 
 const canvas = document.querySelector<HTMLCanvasElement>('#stage');
 const hudRoot = document.querySelector<HTMLElement>('#hud');
@@ -23,6 +25,7 @@ if (!ctx || !layerCtx) throw new Error('Canvas2D is not available');
 const query = parseQuery(location.search);
 const config: AnimationConfig = {
   ...DEFAULT_CONFIG,
+  cycle: query.cycle,
   transition: { ...DEFAULT_CONFIG.transition, mode: query.transition },
 };
 const timeline = new Timeline(query.seed, config);
@@ -104,7 +107,11 @@ function render(intervalMs = 0): void {
       koch: Math.min(DEPTH_CEILING, l.depths.koch),
       sierpinski: Math.min(DEPTH_CEILING, l.depths.sierpinski),
     };
-    const shapes = buildSnowflake(l.params, depths, { view, growth: l.growth });
+    const shapes = buildSnowflake(l.params, depths, {
+      view,
+      growth: l.growth,
+      maxSegments: (SEGMENT_BUDGET * 2) / quality.minSegmentPx,
+    });
     layerCtx!.clearRect(0, 0, w, h);
     drawSnowflake(
       layerCtx!,
@@ -126,9 +133,11 @@ function render(intervalMs = 0): void {
       ctx!.drawImage(layer, 0, 0);
       ctx!.restore();
     }
+    ctx!.save();
+    if (l.blur) ctx!.filter = `blur(${(l.blur * dpr).toFixed(1)}px)`;
     ctx!.globalAlpha = l.alpha;
     ctx!.drawImage(layer, 0, 0);
-    ctx!.globalAlpha = 1;
+    ctx!.restore();
   }
 
   const frameMs = performance.now() - start;

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { CHAOS_ANGLE, CHAOS_FLANK, CHAOS_RATIO, kochFlank } from '../src/animation/chaos';
 import {
+  CYCLE_PHASES,
   DEFAULT_CONFIG,
-  PHASES,
+  cycleDuration,
   phaseDuration,
   type AnimationConfig,
 } from '../src/animation/config';
@@ -15,6 +17,7 @@ import {
   lerpParams,
   transitionLayers,
 } from '../src/animation/transition';
+import { kochTemplate } from '../src/fractal/koch';
 import { buildSectorTemplate } from '../src/fractal/sector';
 import { buildSnowflake } from '../src/fractal/snowflake';
 import { seedToParams } from '../src/seed/seedToParams';
@@ -128,31 +131,44 @@ describe('transitions', () => {
   });
 });
 
-describe('timeline', () => {
-  const total = PHASES.reduce((s, p) => s + phaseDuration(DEFAULT_CONFIG, p), 0);
+const ZOOM: AnimationConfig = { ...DEFAULT_CONFIG, cycle: 'zoom' };
+
+describe.each([
+  ['chaos', DEFAULT_CONFIG],
+  ['zoom', ZOOM],
+] as const)('timeline (%s cycle)', (cycle, config) => {
+  const phases = CYCLE_PHASES[cycle];
+  const total = cycleDuration(config);
 
   it('runs the phases in order and advances to seed n+1', () => {
-    const tl = new Timeline(5);
+    const tl = new Timeline(5, config);
     const seen: string[] = [tl.phase];
     for (let t = 0; t < total + 0.1; t += 0.05) {
       tl.update(0.05);
       if (seen[seen.length - 1] !== tl.phase) seen.push(tl.phase);
     }
-    expect(seen).toEqual([...PHASES, 'generate']);
+    expect(seen).toEqual([...phases, 'generate']);
     expect(tl.seed).toBe(6);
   });
 
   it('every phase boundary is continuous (camera, depth, opacity)', () => {
     const eps = 1e-6;
     let t = 0;
-    for (const phase of PHASES) {
-      t += phaseDuration(DEFAULT_CONFIG, phase);
-      const left = new Timeline(3);
+    for (const phase of phases) {
+      t += phaseDuration(config, phase);
+      const left = new Timeline(3, config);
       left.update(t - eps);
-      const right = new Timeline(3);
+      const right = new Timeline(3, config);
       right.update(t + eps);
       const a = left.frame(OPTS);
       const b = right.frame(OPTS);
+      const alpha = (f: typeof a) => f.layers.reduce((s, l) => s + l.alpha, 0);
+      expect(alpha(a), phase).toBeCloseTo(alpha(b), 3);
+      if (phase === 'dissolve') {
+        // Nothing is left on screen: the next crystal starts from scratch.
+        expect(alpha(a)).toBeCloseTo(0, 3);
+        continue;
+      }
       if (phase === 'infinite') {
         // The renormalisation seam: zoom ×s and depth +1 is the same picture.
         expect(a.camera.zoom / b.camera.zoom).toBeCloseTo(a.plan.scale, 3);
@@ -162,37 +178,91 @@ describe('timeline', () => {
       }
       expect(a.camera.zoom, phase).toBeCloseTo(b.camera.zoom, 3);
       expect(a.camera.cx, phase).toBeCloseTo(b.camera.cx, 3);
-      const alpha = (f: typeof a) => f.layers.reduce((s, l) => s + l.alpha, 0);
-      expect(alpha(a), phase).toBeCloseTo(alpha(b), 3);
       if (phase !== 'transition') {
         expect(a.layers[0]!.depths.koch, phase).toBeCloseTo(b.layers[0]!.depths.koch, 3);
+        expect(a.layers[0]!.params.kochAngle, phase).toBeCloseTo(b.layers[0]!.params.kochAngle, 3);
       }
     }
   });
 
   it('frames are reproducible', () => {
-    const a = new Timeline(42);
-    const b = new Timeline(42);
+    const a = new Timeline(42, config);
+    const b = new Timeline(42, config);
     a.update(9.3);
     b.update(9.3);
     expect(a.frame(OPTS)).toStrictEqual(b.frame(OPTS));
   });
 
   it('phase durations are configurable', () => {
-    const fast: AnimationConfig = {
-      ...DEFAULT_CONFIG,
-      generate: { duration: 0.5, easing: 'linear' },
-    };
+    const fast: AnimationConfig = { ...config, generate: { duration: 0.5, easing: 'linear' } };
     const tl = new Timeline(0, fast);
     tl.update(0.6);
-    expect(tl.phase).toBe('zoomIn');
+    expect(tl.phase).toBe(phases[1]);
   });
 
   it('jumpTo restarts at the generation phase', () => {
-    const tl = new Timeline(0);
+    const tl = new Timeline(0, config);
     tl.update(12);
     tl.jumpTo(99);
     expect([tl.seed, tl.phase, tl.elapsed]).toEqual([99, 'generate', 0]);
+  });
+});
+
+describe('chaos cycle', () => {
+  const c = DEFAULT_CONFIG;
+  const at = (t: number, seed = 8) => {
+    const tl = new Timeline(seed);
+    tl.update(t);
+    return tl.frame(OPTS);
+  };
+
+  it('is the default: grow → chaos → dissolve', () => {
+    expect(DEFAULT_CONFIG.cycle).toBe('chaos');
+    expect(CYCLE_PHASES.chaos).toEqual(['generate', 'chaos', 'dissolve']);
+  });
+
+  it('pushes the Koch bump towards a long, spiky flank while depth keeps rising', () => {
+    let prevFlank = 0;
+    let prevDepth = 0;
+    for (let k = 0; k <= 10; k++) {
+      const f = at(c.generate.duration + (c.chaos.duration * k) / 10 - (k === 10 ? 1e-6 : 0));
+      const l = f.layers[0]!;
+      const flank = kochFlank(l.params.kochRatio, l.params.kochAngle);
+      expect(flank).toBeGreaterThanOrEqual(prevFlank - 1e-12);
+      expect(l.depths.koch).toBeGreaterThanOrEqual(prevDepth - 1e-12);
+      prevFlank = flank;
+      prevDepth = l.depths.koch;
+    }
+    expect(prevFlank).toBeCloseTo(CHAOS_FLANK, 3);
+    // The chaotic template still contracts, so the curve is well defined.
+    expect(() => kochTemplate(CHAOS_RATIO, CHAOS_ANGLE)).not.toThrow();
+  });
+
+  it('dissolve spreads, blurs and fades the crystal to nothing', () => {
+    const start = c.generate.duration + c.chaos.duration;
+    const mid = at(start + c.dissolve.duration / 2).layers[0]!;
+    const end = at(start + c.dissolve.duration - 1e-6);
+    expect(mid.blur).toBeGreaterThan(0);
+    expect(end.layers[0]!.alpha).toBeLessThan(0.01);
+    expect(end.camera.zoom).toBeGreaterThan(1);
+  });
+
+  it('the next seed fades in from a dot', () => {
+    const f = at(cycleDuration(c) + 0.01);
+    expect(f.seed).toBe(9);
+    expect(f.phase).toBe('generate');
+    expect(f.layers[0]!.growth).toBeLessThan(0.01);
+    expect(f.layers[0]!.alpha).toBeLessThan(0.1);
+  });
+
+  it('corners multiply on the road to chaos (whole flake, segment budget not binding)', () => {
+    const corners = (k: number) => {
+      const l = at(c.generate.duration + (c.chaos.duration * k) / 4, 4).layers[0]!;
+      const shapes = buildSnowflake(l.params, l.depths, { maxSegments: 400_000 });
+      return shapes.fills.reduce((n, f) => n + f.length / 2, 0);
+    };
+    expect(corners(1)).toBeGreaterThan(corners(0));
+    expect(corners(3)).toBeGreaterThan(corners(1));
   });
 });
 
