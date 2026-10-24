@@ -72,6 +72,13 @@ describe('symmetrised snowflake', () => {
     }
   });
 
+  it('every crystal has at least one side branch (no bare straight arms)', () => {
+    for (let seed = 0; seed < 5000; seed++) {
+      const sides = buildSectorTemplate(seedToParams(seed)).sides.length;
+      if (sides < 1) throw new Error(`seed ${seed} has no side branches`);
+    }
+  });
+
   it('sector side branches stay within the 30° wedge', () => {
     for (let seed = 0; seed < 200; seed++) {
       const tpl = buildSectorTemplate(seedToParams(seed));

@@ -93,7 +93,7 @@ export const RD_PARAM_SPECS = {
   mainWidth: cont(0.035, 0.07),
   tipLength: cont(0.06, 0.16),
   hexRadius: cont(0.14, 0.26),
-  sideCount: int(0, 4),
+  sideCount: int(1, 4),
   sideAngle: cont(35, 75),
   sideStart: cont(0.22, 0.4),
   sideSpread: cont(0.3, 0.5),
