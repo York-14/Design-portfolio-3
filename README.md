@@ -118,16 +118,30 @@ $d \ge 18$ の中で、使う全軸が小さい分母の有理数から十分離
 
 ## アニメーション
 
-| フェーズ   | 内容                                    | 既定（秒・イージング） |
-| ---------- | --------------------------------------- | ---------------------- |
-| generate   | 再帰レベル 0 → 最大深さ                 | 5.0・easeInOutSine     |
-| zoomIn     | 全体像 → 自己相似の不動点               | 4.5・easeInOutCubic    |
-| infinite   | 無限ズーム（自己相似周期 × 3 回）       | 3.2 / 周期・linear     |
-| zoomOut    | 全体像へ戻る                            | 4.0・easeInOutCubic    |
-| fadeOut    | 再帰が引いていき、不透明度 0.4 まで減光 | 1.8・easeInOutQuad     |
-| transition | n → n+1（**ハイブリッド**）             | 2.6・easeInOutSine     |
+| フェーズ   | 内容                                            | 既定（秒・イージング） |
+| ---------- | ----------------------------------------------- | ---------------------- |
+| generate   | 点 → 六角形 → 腕が芽吹き、角が増えながら成長    | 6.0・easeInOutSine     |
+| zoomIn     | 全体像 → 自己相似の不動点                       | 4.5・easeInOutCubic    |
+| infinite   | 無限ズーム（自己相似周期 × 3 回）               | 3.2 / 周期・linear     |
+| zoomOut    | 全体像へ戻る                                    | 4.0・easeInOutCubic    |
+| fadeOut    | 成長を逆再生して点に戻り、不透明度 0.4 まで減光 | 2.6・easeInOutSine     |
+| transition | 点の状態で n → n+1（**ハイブリッド**）          | 1.6・easeInOutSine     |
 
 設定は `src/animation/config.ts` にあります。
+
+### 成長：点から結晶へ
+
+[![seed #0012 の成長](docs/growth.png)](https://york-14.github.io/Design-portfolio-3/?seed=12)
+
+腕がまっすぐな棒のまま全長に伸びた状態は、一度も現れないようにしています（`src/fractal/growth.ts`）。
+
+1. **核（成長度 0 → 0.25）**：点のような小さな正円が膨らみ、輪郭が丸から六角形へと鋭くなります（角 0 → 6）。
+   輪郭は 2.5° 刻みでサンプリングしているので、どの瞬間も D6 対称です。
+2. **腕（0.25 → 1）**：六角形の各辺の中点から腕が芽を出し、形の比率を保ったまま全体として伸びます。
+   コッホとシェルピンスキーの再帰深さも同時に 0 → 最大へ深まるので、角数は結晶が広がるにつれて増え続けます。
+
+収縮（fadeOut）はこの逆再生です。次のシードへの受け渡しは「点」の状態で行われ、色だけが移り変わります。
+テストでは、成長度を 0 → 1 と進めたとき、角数（20° 以上曲がる頂点の数）と外径がどちらも単調に増えることを検証しています。
 
 ### 継ぎ目のない無限ズーム
 
@@ -158,7 +172,7 @@ $$
 | 連続（長さ・角度・比率・線幅・色）         | 線形補間で **モーフィング**（色相は最短弧）                 |
 | 離散（副枝の本数、表示中の抜き方パターン） | 違うときだけ、両方をモーフィングしながら **クロスフェード** |
 
-遷移は再帰深さ 0 の状態で行うので、深さの違いは見た目に影響しません。
+遷移は結晶が点に縮んだ状態で行うので、腕の形の違いは見た目に現れず、実際には色が滑らかに移り変わります。
 `?transition=crossfade` または `?transition=morph` で、ほかの方式にも切り替えられます。
 
 ### 60fps と自動品質調整
@@ -214,16 +228,16 @@ npm run preview
 
 ## 無限ズームのスナップショット
 
-| コッホ先端（×2/(1−m)）                                                                          | シェルピンスキー中心（×2）                                                                                   |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| [![Koch zoom](docs/zoom-koch.png)](https://york-14.github.io/Design-portfolio-3/?seed=7&at=9.5) | [![Sierpinski zoom](docs/zoom-sierpinski.png)](https://york-14.github.io/Design-portfolio-3/?seed=21&at=9.5) |
+| コッホ先端（×2/(1−m)）                                                                           | シェルピンスキー中心（×2）                                                                                    |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| [![Koch zoom](docs/zoom-koch.png)](https://york-14.github.io/Design-portfolio-3/?seed=7&at=10.5) | [![Sierpinski zoom](docs/zoom-sierpinski.png)](https://york-14.github.io/Design-portfolio-3/?seed=21&at=10.5) |
 
 ## 構成
 
 ```
 src/
   seed/        golden.ts（φ・Vogel・R_d）, params.ts（範囲定義）, seedToParams.ts
-  fractal/     geometry.ts, koch.ts, sierpinski.ts, symmetry.ts（D6）,
+  fractal/     geometry.ts, koch.ts, sierpinski.ts, symmetry.ts（D6）, growth.ts（成長）,
                sector.ts（1/12 セクター）, snowflake.ts（対称化・カリング）, render.ts
   animation/   easing.ts, config.ts, timeline.ts, infiniteZoom.ts, transition.ts, perf.ts
   ui/          controls.ts（HUD）, query.ts（URL）
